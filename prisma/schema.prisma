@@ -1,0 +1,176 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  // binaryTargets ensures Prisma engine binaries work across local dev
+  // (native) and Netlify's AWS Lambda (debian-openssl-3.0.x, linux-static-x64).
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  // LOCAL DEV variant — uses SQLite file.
+  // Swap in with:  cp prisma/schema.sqlite.prisma prisma/schema.prisma
+  // Restore prod with: git checkout prisma/schema.prisma
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Post {
+  id        String   @id @default(cuid())
+  title     String
+  content   String?
+  published Boolean  @default(false)
+  authorId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// A villa owner consultation request submitted via the website contact form.
+model Lead {
+  id              String   @id @default(cuid())
+  fullName        String
+  whatsappNumber  String
+  email           String
+  villaName       String?
+  villaLocation   String?
+  bedrooms        String?
+  propertyStatus  String?
+  bookingChannels String?
+  managementState String?
+  objective       String?
+  message         String?
+  source          String   @default("website")
+  status          String   @default("new")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+/// CMS-managed site content records (portfolio, services, faqs, etc.)
+/// allow future admin dashboard editing without code changes.
+model CmsContent {
+  id        String   @id @default(cuid())
+  type      String
+  slug      String
+  data      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([type, slug])
+}
+
+/// A villa in the managed portfolio (editable via admin).
+model Villa {
+  id            String        @id @default(cuid())
+  name          String
+  location      String
+  bedrooms      Int
+  type          String
+  descriptionEn String
+  descriptionId String
+  image         String
+  order         Int           @default(0)
+  published     Boolean       @default(true)
+  /// Price per night in the villa's currency. Nullable = "Price on request".
+  pricePerNight Float?
+  /// Currency code, e.g. "USD", "IDR". Defaults to USD.
+  currency      String        @default("USD")
+  /// Maximum number of guests the villa accommodates.
+  maxGuests     Int           @default(6)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  reservations Reservation[]
+  images       VillaImage[]
+}
+
+/// Gallery image for a villa (multiple images per villa for slideshow).
+model VillaImage {
+  id        String   @id @default(cuid())
+  villaId   String
+  villa     Villa    @relation(fields: [villaId], references: [id], onDelete: Cascade)
+  url       String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Frequently asked question (bilingual).
+model Faq {
+  id          String   @id @default(cuid())
+  questionEn  String
+  questionId  String
+  answerEn    String
+  answerId    String
+  order       Int      @default(0)
+  published   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+/// Owner testimonial (bilingual, published flag).
+model Testimonial {
+  id          String   @id @default(cuid())
+  quoteEn     String
+  quoteId     String
+  nameEn      String
+  nameId      String
+  locationEn  String
+  locationId  String
+  published   Boolean  @default(false)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+/// A guest booking/reservation for a villa (created via the public booking form).
+model Reservation {
+  id          String   @id @default(cuid())
+  villaId     String
+  villa       Villa    @relation(fields: [villaId], references: [id], onDelete: Cascade)
+  guestName   String
+  guestEmail  String
+  guestPhone  String
+  /// Check-in date (noon, local).
+  checkIn     DateTime
+  /// Check-out date (noon, local). checkOut must be after checkIn.
+  checkOut    DateTime
+  /// Number of guests.
+  guests      Int      @default(2)
+  /// Computed total at booking time (nights × pricePerNight). May be null
+  /// for "price on request" villas.
+  totalAmount Float?
+  currency    String   @default("USD")
+  /// pending → confirmed → cancelled (or pending → cancelled).
+  status      String   @default("pending")
+  notes       String?
+  source      String   @default("website")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+/// Singleton row (id="default") holding editable global site settings.
+model SiteSetting {
+  id              String   @id @default("default")
+  whatsappNumber  String
+  whatsappDisplay String
+  email           String
+  location        String
+  locationLabelEn String
+  locationLabelId String
+  instagram       String
+  facebook        String
+  linkedin        String
+  updatedAt       DateTime @updatedAt
+}
