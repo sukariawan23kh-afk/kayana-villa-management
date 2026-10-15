@@ -15,7 +15,7 @@ datasource db {
   // LOCAL DEV variant — uses SQLite file.
   // Swap in with:  cp prisma/schema.sqlite.prisma prisma/schema.prisma
   // Restore prod with: git checkout prisma/schema.prisma
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
